@@ -1,0 +1,115 @@
+pipeline {
+    agent any
+    environment {
+        DIRECTORY_PATH = "/Users/myhuy/Documents/jenkins"
+        TESTING_ENVIRONMENT = "AWS EC2 instance_testing"
+        PRODUCTION_ENVIRONMENT = "AWS EC2 instance_production"
+        DOCKER_IMAGE = "mywebapp_image:latest"
+        DOCKER_CONTAINER = "mywebapp_container"
+    }
+    
+    stages {
+        stage('Checkout Code') {
+            steps {
+                // Task: Checkout the source code from GitHub
+                // Tool: Git
+                git url: 'https://github.com/myusername/my-webapp-repo.git', branch: 'main'
+                echo "Code has been checked out from GitHub"
+            }
+        }
+        stage('Build') {
+            steps {
+                // Task: Build the Docker image
+                // Tool: Docker
+                script {
+                    echo "Building Docker image for the web application..."
+                    sh 'docker build -t $DOCKER_IMAGE .'
+                }
+            }
+        }
+        stage('Unit and Integration Tests') {
+            steps {
+                // Task: Run automated tests using Selenium WebDriver (Python)
+                // Tool: Selenium WebDriver, Docker
+                script {
+                    echo "Running unit and integration tests using Selenium WebDriver..."
+                    sh '''
+                    docker run -d -v $WORKSPACE:/app --name selenium_test_container selenium/standalone-chrome
+                    docker exec selenium_test_container python3 -m unittest discover tests/
+                    '''
+                }
+            }
+            post {
+                success {
+                    emailext to: 'myhuylim00302@gmail.com',
+                    subject: 'Pipeline Success - Unit and Integration Tests',
+                    body: 'All tests passed successfully!',
+                    attachLog: true
+                }
+                failure {
+                    emailext to: 'myhuylim00302@gmail.com',
+                    subject: 'Pipeline Failure - Unit and Integration Tests',
+                    body: 'Unit and integration tests failed. Please review the logs.',
+                    attachLog: true
+                }
+            }
+        }
+        stage('Code Quality Analysis') {
+            steps {
+                // Task: Analyze the code quality using SonarQube
+                // Tool: SonarQube
+                script {
+                    echo "Running code quality analysis using SonarQube..."
+                    sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=my-webapp \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.login=$SONARQUBE_TOKEN
+                    '''
+                }
+            }
+        }
+        stage('Deploy to Staging') {
+            steps {
+                // Task: Deploy the application to staging server using Docker
+                // Tool: Docker
+                script {
+                    echo "Deploying the application to the staging environment..."
+                    sh '''
+                    docker stop $DOCKER_CONTAINER || true
+                    docker rm $DOCKER_CONTAINER || true
+                    docker run -d --name $DOCKER_CONTAINER -p 8080:80 $DOCKER_IMAGE
+                    '''
+                }
+            }
+        }
+        stage('Release to Production') {
+            steps {
+                // Task: Deploy the application to production
+                // Tool: Docker or AWS (depends on production environment)
+                script {
+                    echo "Deploying the application to the production environment..."
+                    sh '''
+                    docker stop $DOCKER_CONTAINER || true
+                    docker rm $DOCKER_CONTAINER || true
+                    docker run -d --name $DOCKER_CONTAINER -p 80:80 $DOCKER_IMAGE
+                    '''
+                }
+            }
+        }
+        stage('Monitoring and Alerting') {
+            steps {
+                // Task: Monitor the production environment
+                // Tool: Monitoring tool like Datadog or New Relic
+                echo "Setting up monitoring and alerting for production environment..."
+                sh 'datadog-agent status || newrelic status'
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs() // Clean up workspace after pipeline run
+        }
+    }
+}
