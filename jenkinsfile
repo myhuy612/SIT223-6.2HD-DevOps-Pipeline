@@ -1,14 +1,12 @@
 pipeline {
     agent any
     environment {
-        DIRECTORY_PATH = "/Users/myhuy/Documents/jenkins"
-        //TESTING_ENVIRONMENT = "AWS EC2 instance_testing"
-        //PRODUCTION_ENVIRONMENT = "AWS EC2 instance_production"
+        DIRECTORY_PATH = "C:/Users/myhuy/Documents/jenkins"
         DOCKER_IMAGE = "mywebapp_image"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
-        
+        DOCKER_CONTAINER = "mywebapp_container"
     }
-    
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -21,14 +19,15 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    echo "Building Docker image ${DOCKER_IMAGE}:${DOCKER_TAG}..."
                     bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
                 }
             }
         }
- 
         stage('Push Docker Image') {
             steps {
                 script {
+                    echo "Pushing Docker image to DockerHub..."
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         bat "docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%"
                         bat "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
@@ -39,12 +38,11 @@ pipeline {
         stage('Unit and Integration Tests') {
             steps {
                 // Task: Run automated tests using Selenium WebDriver (Python)
-                // Tool: Selenium WebDriver, Docker
                 script {
-                    echo "Running unit and integration tests using Selenium WebDriver..."
-                    sh '''
-                    docker run -d -v $WORKSPACE:/app --name selenium_test_container selenium/standalone-chrome
-                    docker exec selenium_test_container python3 -m unittest discover tests/
+                    echo "Running unit and integration tests..."
+                    bat '''
+                    docker run -d --name selenium_test_container -v %WORKSPACE%:/app selenium/standalone-chrome
+                    docker exec selenium_test_container python -m unittest discover tests/
                     '''
                 }
             }
@@ -66,10 +64,9 @@ pipeline {
         stage('Code Quality Analysis') {
             steps {
                 // Task: Analyze the code quality using SonarQube
-                // Tool: SonarQube
                 script {
-                    echo "Running code quality analysis using SonarQube..."
-                    sh '''
+                    echo "Running code quality analysis with SonarQube..."
+                    bat '''
                     sonar-scanner \
                     -Dsonar.projectKey=my-webapp \
                     -Dsonar.sources=. \
@@ -81,44 +78,24 @@ pipeline {
         }
         stage('Deploy to Staging') {
             steps {
-                // Task: Deploy the application to staging server using Docker
-                // Tool: Docker
                 script {
                     echo "Deploying the application to the staging environment..."
-                    sh '''
-                    docker stop $DOCKER_CONTAINER || true
-                    docker rm $DOCKER_CONTAINER || true
-                    docker run -d --name $DOCKER_CONTAINER -p 8080:80 $DOCKER_IMAGE
+                    bat '''
+                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
+                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
+                    docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
                     '''
                 }
             }
         }
         stage('Release to Production') {
             steps {
-                // Task: Deploy the application to production
-                // Tool: Docker or AWS (depends on production environment)
                 script {
                     echo "Deploying the application to the production environment..."
-                    sh '''
-                    docker stop $DOCKER_CONTAINER || true
-                    docker rm $DOCKER_CONTAINER || true
-                    docker run -d --name $DOCKER_CONTAINER -p 80:80 $DOCKER_IMAGE
+                    bat '''
+                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
+                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
+                    docker run -d --name ${DOCKER_CONTAINER} -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
                     '''
                 }
-            }
-        }
-        stage('Monitoring and Alerting') {
-            steps {
-                // Task: Monitor the production environment
-                // Tool: Monitoring tool like Datadog or New Relic
-                echo "Setting up monitoring and alerting for production environment..."
-                sh 'datadog-agent status || newrelic status'
-            }
-        }
-    }
-    post {
-        always {
-            cleanWs() // Clean up workspace after pipeline run
-        }
-    }
-}
+          
