@@ -4,7 +4,7 @@ pipeline {
         DIRECTORY_PATH = "/Users/myhuy/Documents/jenkins"
         //TESTING_ENVIRONMENT = "AWS EC2 instance_testing"
         //PRODUCTION_ENVIRONMENT = "AWS EC2 instance_production"
-        DOCKER_IMAGE = "mywebapp_image:latest"
+        DOCKER_IMAGE = "mywebapp_image"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         
     }
