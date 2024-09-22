@@ -65,7 +65,7 @@ pipeline {
                     -Dsonar.projectKey=my-webapp \
                     -Dsonar.sources=. \
                     -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=$SONARQUBE_TOKEN
+                    -Dsonar.login=sqp_45141d7211cb7a4e8b298f2ec15673cc63da3bf3
                     '''
                 }
             }
