@@ -1,0 +1,8 @@
+version: '3'
+services:
+  web:
+    image: myhuy/mywebapp_image:${BUILD_NUMBER}
+    ports:
+      - "8080:80"  # For staging
+    volumes:
+      - .:/usr/share/nginx/html  # Mount the current directory for live updates
