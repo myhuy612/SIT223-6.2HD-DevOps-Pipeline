@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DIRECTORY_PATH = "C:/Users/myhuy/Documents/jenkins"
-        DOCKER_IMAGE = "mywebapp_image"
+        DOCKER_IMAGE = "myhuy/mywebapp_image"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CONTAINER = "mywebapp_container"
     }
@@ -16,48 +16,50 @@ pipeline {
                 echo "Code has been checked out from GitHub"
             }
         }
-        stage('Build Docker Image') {
+
+        // stage('Build Docker Image') {
+        //     steps {
+        //         script {
+        //             echo "Building Docker image ${DOCKER_IMAGE}:${DOCKER_TAG}..."
+        //             bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+        //         }
+        //     }
+        // }
+
+        // stage('Push Docker Image') {
+        //     steps {
+        //         script {
+        //             echo "Pushing Docker image to DockerHub..."
+        //             withCredentials([usernamePassword(credentialsId: 'docker-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+        //                 bat "docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%"
+        //                 bat "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+        //             }
+        //         }
+        //     }
+        // }
+
+        stage('Deploy to Staging') {
             steps {
                 script {
-                    echo "Building Docker image ${DOCKER_IMAGE}:${DOCKER_TAG}..."
-                    bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    echo "Deploying the application to the staging environment..."
+                    bat """
+                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
+                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
+                    docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
                 }
             }
         }
-        stage('Push Docker Image') {
+
+        stage('Release to Production') {
             steps {
                 script {
-                    echo "Pushing Docker image to DockerHub..."
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        bat "docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%"
-                        bat "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    }
-                }
-            }
-        }
-        stage('Unit and Integration Tests') {
-            steps {
-                // Task: Run automated tests using Selenium WebDriver (Python)
-                script {
-                    echo "Running unit and integration tests..."
+                    echo "Deploying the application to the production environment..."
                     bat '''
-                    docker run -d --name selenium_test_container -v %WORKSPACE%:/app selenium/standalone-chrome
-                    docker exec selenium_test_container python -m unittest discover tests/
+                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
+                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
+                    docker run -d --name ${DOCKER_CONTAINER} -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
                     '''
-                }
-            }
-            post {
-                success {
-                    emailext to: 'myhuylim00302@gmail.com',
-                    subject: 'Pipeline Success - Unit and Integration Tests',
-                    body: 'All tests passed successfully!',
-                    attachLog: true
-                }
-                failure {
-                    emailext to: 'myhuylim00302@gmail.com',
-                    subject: 'Pipeline Failure - Unit and Integration Tests',
-                    body: 'Unit and integration tests failed. Please review the logs.',
-                    attachLog: true
                 }
             }
         }
@@ -76,26 +78,41 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to Staging') {
-            steps {
-                script {
-                    echo "Deploying the application to the staging environment..."
-                    bat '''
-                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
-                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
-                    docker run -d --name ${DOCKER_CONTAINER} -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    '''
-                }
-            }
-        }
-        stage('Release to Production') {
-            steps {
-                script {
-                    echo "Deploying the application to the production environment..."
-                    bat '''
-                    docker stop ${DOCKER_CONTAINER} || echo "No container to stop"
-                    docker rm ${DOCKER_CONTAINER} || echo "No container to remove"
-                    docker run -d --name ${DOCKER_CONTAINER} -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    '''
-                }
-          
+    }
+}
+
+ // stage('Unit and Integration Tests') {
+        //     steps {
+        //         // Task: Run automated tests using Selenium WebDriver (Python)
+        //         script {
+        //             echo "Running unit and integration tests..."
+        //             bat '''
+        //             docker run -d --name selenium_test_container -v %WORKSPACE%:/app selenium/standalone-chrome
+        //             docker exec selenium_test_container python -m unittest discover tests/
+        //             '''
+        //         }
+        //     }
+        //     post {
+        //         success {
+        //             emailext to: 'myhuylim00302@gmail.com',
+        //             subject: 'Pipeline Success - Unit and Integration Tests',
+        //             body: 'All tests passed successfully!',
+        //             attachLog: true
+        //         }
+        //         failure {
+        //             emailext to: 'myhuylim00302@gmail.com',
+        //             subject: 'Pipeline Failure - Unit and Integration Tests',
+        //             body: 'Unit and integration tests failed. Please review the logs.',
+        //             attachLog: true
+        //         }
+        //     }
+        // }
+
+        
+        // stage('SonarQube Analysis'){
+        //     def mvnHome = tool name: 'maven-3', type: 'maven'
+        //     withSonarQubeEnv('server-sonar') {
+        //         sh "${mvnHome}/bin/mvn package"
+        //     }
+        // }
+
