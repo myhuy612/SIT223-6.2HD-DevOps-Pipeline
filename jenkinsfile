@@ -6,9 +6,10 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CONTAINER = "mywebapp_container"
         SONAR_HOST_URL = "http://localhost:9000"
-        SONAR_LOGIN = "sqa_ce7fedbe2add4f48b3b7f48442aa179f0b756cd0"
+        SONAR_LOGIN = "sqp_e23892ebad08298c7c1cbdaf4e0bb920f4b2d0a4"
         JAVA_HOME = "C:/PROGRA~1/ECLIPS~1/JDK-17~1.7-H/bin/java.exe" 
         PATH = "${env.JAVA_HOME}/bin:${env.PATH}" // Add Java to the PATH
+
     }
  
     stages {
@@ -73,11 +74,11 @@ pipeline {
                 // Running code quality analysis using SonarQube
                 script {
                     echo "Running code quality analysis with SonarQube..."
-                    withSonarQubeEnv('SonarQube') { // Reference SonarQube environment in Jenkins
+                    withSonarQubeEnv('sonarscanner') { // Reference SonarQube environment in Jenkins
                         bat """
                         sonar-scanner ^
-                        -Dsonar.projectKey=SIT223HDnew ^
-                        -Dsonar.projectName="SIT223 HD Web Application" ^
+                        -Dsonar.projectKey=sonarscanner ^
+                        -Dsonar.projectName="sonarscanner" ^
                         -Dsonar.host.url=${SONAR_HOST_URL} ^
                         -Dsonar.login=${SONAR_LOGIN}
                         """
